@@ -3,9 +3,9 @@
 import book
 
 filepaths = []
-for i in range(0, 64+1):
+for i in range(0, 19+1):
     CHAPTER_NUMBER = str(i).zfill(2)
-    filepath = f"book2-chapters/chapter{CHAPTER_NUMBER}.txt"
+    filepath = f"book3-chapters/chapter{CHAPTER_NUMBER}.txt"
     filepaths.append(filepath)
 
-book.to_epub("for2-correct.epub", filepaths)
+book.to_epub("for3-correct.epub", filepaths)

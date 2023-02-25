@@ -15,20 +15,21 @@ disable_warnings(InsecureRequestWarning)
 
 
 def get_chapters(html_parser) -> list[str]:
-    FOR_URL = "https://www.forgottenconqueror.com/book-two/"
-    # FOR_PATH = "Book One - Forgotten Conqueror.htm"
+    FOR_URL = "https://www.forgottenconqueror.com/book-three/"
     WEBPAGE = requests.get(FOR_URL, verify=False)
     BOOKTREE = etree.fromstring(WEBPAGE.text, parser=html_parser)
-    # frontpage = etree.parse(FOR_PATH, parser=HTML_PARSER)
-    BOOK_XPATH = "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[1]/a[x]"
-    CHAPTERS = len(BOOKTREE.xpath(
-        "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[1]")[0])
+    BOOK_XPATH = "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[z]/a[x]"
+    BROKEN_CHAPTERS = len(BOOKTREE.xpath(
+        "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div")[0])
     chapters = []
-
-    for i in range(1, CHAPTERS+1):
-        ELEM = BOOKTREE.xpath(BOOK_XPATH.replace('x', str(i)))
-        if len(ELEM) > 0 and ELEM[0].tag == "a":
-            chapters.append(ELEM[0].get("href"))
+    for j in range(1, BROKEN_CHAPTERS+1):
+        CHAPTERS = len(BOOKTREE.xpath(
+            "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[z]".replace('z', str(j)))[0])
+        for i in range(1, CHAPTERS+1):
+            ELEM = BOOKTREE.xpath(BOOK_XPATH.replace(
+                'x', str(i)).replace('z', str(j)))
+            if len(ELEM) > 0 and ELEM[0].tag == "a":
+                chapters.append(ELEM[0].get("href"))
     return chapters
 
 
@@ -89,11 +90,11 @@ def main(html_parser):
     print("     Done with getting chapter URLs.")
 
     print("  2. Chapter URL to txt file.")
-    filepaths = url_to_txt(html_parser, chapters, "book2-chapters")
+    filepaths = url_to_txt(html_parser, chapters, "book3-chapters")
     print("     Done with all chapters.")
 
     print("  3. Compiling to book.")
-    to_epub("for2.epub", filepaths)
+    to_epub("Forgotten_Conqueror_-_Book_3.epub", filepaths)
     print("     Done with compilation.")
 
 
