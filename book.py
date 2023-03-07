@@ -10,77 +10,80 @@ import requests
 from lxml import etree
 from urllib3 import disable_warnings
 from urllib3.exceptions import InsecureRequestWarning
+from readability import Document
 
 disable_warnings(InsecureRequestWarning)
 
 
 def get_chapters(html_parser) -> list[str]:
-    FOR_URL = "https://www.forgottenconqueror.com/book-three/"
-    WEBPAGE = requests.get(FOR_URL, verify=False)
-    BOOKTREE = etree.fromstring(WEBPAGE.text, parser=html_parser)
-    BOOK_XPATH = "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[z]/a[x]"
-    BROKEN_CHAPTERS = len(BOOKTREE.xpath(
+    for_url = "https://www.forgottenconqueror.com/book-three/"
+    webpage = requests.get(for_url, verify=False)
+    book_tree = etree.fromstring(webpage.text, parser=html_parser)
+    book_xpath = "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[z]/a[x]"
+    broken_chapters = len(book_tree.xpath(
         "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div")[0])
-    chapters = []
-    for j in range(1, BROKEN_CHAPTERS+1):
-        CHAPTERS = len(BOOKTREE.xpath(
+    chapters_url = []
+    for j in range(1, broken_chapters+1):
+        chapters = len(book_tree.xpath(
             "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[z]".replace('z', str(j)))[0])
-        for i in range(1, CHAPTERS+1):
-            ELEM = BOOKTREE.xpath(BOOK_XPATH.replace(
+        for i in range(1, chapters+1):
+            elem = book_tree.xpath(book_xpath.replace(
                 'x', str(i)).replace('z', str(j)))
-            if len(ELEM) > 0 and ELEM[0].tag == "a":
-                chapters.append(ELEM[0].get("href"))
-    return chapters
+            if len(elem) > 0 and elem[0].tag == "a":
+                chapters_url.append(elem[0].get("href"))
+    return chapters_url
 
 
-def url_to_txt(html_parser, chapters, foldername="chapters", should_sleep=True) -> list[str]:
+def url_to_txt(html_parser, chapters, folder_name="chapters", should_sleep=True) -> list[str]:
     filepaths = []
     # for each chapter get the text
-    if Path.exists(Path(foldername)):
-        shutil.rmtree(foldername)
-    os.mkdir(foldername)
+    if Path.exists(Path(folder_name)):
+        shutil.rmtree(folder_name)
+    os.mkdir(folder_name)
     for C_URL in chapters:
-        CUR_WEBPAGE = requests.get(C_URL, verify=False)
-        CUR_PAGE = etree.fromstring(CUR_WEBPAGE.text, parser=html_parser)
-        # CUR_PAGE = etree.parse(C_URL, parser=html_parser)
+        cur_webpage = requests.get(C_URL, verify=False)
+        doc = Document(cur_webpage)
+        cur_page = etree.fromstring(doc.summary(), parser=html_parser())
+        # cur_page = etree.fromstring(cur_webpage.text, parser=html_parser)
+        # cur_page = etree.parse(C_URL, parser=html_parser)
 
-        TEXT_HOLDER_XPATH = "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div"
-        TEXT_HOLDER = CUR_PAGE.xpath(TEXT_HOLDER_XPATH)[0]
+        text_holder_xpath = "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div"
+        text_holder = cur_page.xpath(text_holder_xpath)[0]
 
-        TEXT_FIELDS = len(TEXT_HOLDER)
-        TEXT_FIELD_XPATH = "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[x]"
-        CHAPTER_NUMBER = str(chapters.index(C_URL)).zfill(2)
-        FILEPATH = f"{foldername}/chapter{CHAPTER_NUMBER}.txt"
-        filepaths.append(FILEPATH)
-        with open(FILEPATH, 'w', encoding="utf-8") as f:
-            TITLE_FIELD = CUR_PAGE.xpath(
+        text_fields = len(text_holder)
+        text_field_xpath = "/html/body/div[1]/div/div[1]/main/article/div/div/div/div/div/p[x]"
+        chapter_number = str(chapters.index(C_URL)).zfill(2)
+        filepath = f"{folder_name}/chapter{chapter_number}.txt"
+        filepaths.append(filepath)
+        with open(filepath, 'w', encoding="utf-8") as f:
+            title_field = cur_page.xpath(
                 "/html/body/div[1]/div/div[1]/main/article/header/h1")[0]
-            TITLE = TITLE_FIELD.text
-            f.write(f"# {TITLE}")
+            title = title_field.text
+            f.write(f"# {title}")
             f.write("\n\n")
-            for i in range(1, TEXT_FIELDS):
-                TEXT_FIELD = CUR_PAGE.xpath(
-                    TEXT_FIELD_XPATH.replace('x', str(i)))[0]
-                TEXT = TEXT_FIELD.text
-                if TEXT is not None:
-                    f.write(TEXT)
-                    if i < TEXT_FIELDS-1:
+            for i in range(1, text_fields):
+                text_field = cur_page.xpath(
+                    text_field_xpath.replace('x', str(i)))[0]
+                text = text_field.text
+                if text is not None:
+                    f.write(text)
+                    if i < text_fields-1:
                         f.write("\n\n")
                 else:
-                    if TEXT_FIELD[0].tag == "em":
-                        if TEXT_FIELD[0].text is not None and TEXT_FIELD[0].tail is not None:
-                            f.write(f"*{TEXT_FIELD[0].text.strip()}* ")
-                            f.write(TEXT_FIELD[0].tail.strip('\n '))
+                    if text_field[0].tag == "em":
+                        if text_field[0].text is not None and text_field[0].tail is not None:
+                            f.write(f"*{text_field[0].text.strip()}* ")
+                            f.write(text_field[0].tail.strip('\n '))
                             f.write("\n\n")
         if should_sleep:
             time.sleep(random.randint(40, 70)/10)
     return filepaths
 
 
-def to_epub(bookpath: str, filenames: list[str]):
-    CMD_STRING = f"pandoc -o {bookpath} .\\booktitle.txt " + \
+def to_epub(book_path: str, filenames: list[str]):
+    cmd_string = f"pandoc -o {book_path} .\\book-title.txt " + \
         " ".join(filenames)
-    os.system(CMD_STRING)
+    os.system(cmd_string)
 
 
 def main(html_parser):
